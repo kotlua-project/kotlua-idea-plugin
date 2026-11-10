@@ -1,0 +1,41 @@
+<idea-plugin>
+    <id>io.github.kotlua</id>
+    <name>Kotlua</name>
+    <vendor>Kotlua Authors</vendor>
+
+    <depends>com.intellij.modules.platform</depends>
+    <depends>com.intellij.gradle</depends>
+    <depends>org.jetbrains.kotlin</depends>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <externalProjectDataService
+                implementation="io.github.kotlua.ide.gradle.KotluaFacetDataService"/>
+<!--        <projectService-->
+<!--                serviceInterface="org.jetbrains.kotlin.analysis.api.platform.projectStructure.KotlinProjectStructureProvider"-->
+<!--                serviceImplementation="io.github.kotlua.ide.IDEProjectStructureProviderWrapper"-->
+<!--                overrides="true"/>-->
+        <applicationInitializedListener
+                implementation="io.github.kotlua.ide.PatcherListener"/>
+
+        <library.type implementation="io.github.kotlua.ide.platform.KotluaLibraryType"/>
+    </extensions>
+
+    <extensions defaultExtensionNs="org.jetbrains.kotlin">
+        <idea.base.platforms.targetPlatformDetector
+                implementation="io.github.kotlua.ide.platform.KotluaTargetPlatformDetector"/>
+
+        <idePlatformKind
+                implementation="io.github.kotlua.ide.platform.LuaIdePlatformKind"/>
+
+        <idePlatformKindTooling
+                implementation="io.github.kotlua.ide.platform.LuaIdePlatformKindTooling"/>
+
+        <!-- <bundledFirCompilerPluginProvider
+                implementation="io.github.kotlua.ide.fir.KotluaBundledFirCompilerPluginProvider"/> -->
+    </extensions>
+
+    <extensions defaultExtensionNs="org.jetbrains.plugins.gradle">
+        <projectResolve
+                implementation="io.github.kotlua.ide.gradle.KotluaProjectResolverExtension"/>
+    </extensions>
+</idea-plugin>
