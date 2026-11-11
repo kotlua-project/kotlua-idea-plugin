@@ -12,7 +12,9 @@ import com.intellij.openapi.externalSystem.util.ExternalSystemApiUtil
 import com.intellij.openapi.roots.DependencyScope
 import io.github.kotlua.gradle.model.KotluaGradleModel
 import io.github.kotlua.gradle.model.KotluaModelProvider
+import io.github.kotlua.ide.gradle.model.DEFAULT_LUA_MAIN_SOURCE_SET_NAME
 import io.github.kotlua.ide.gradle.model.DefaultKotluaGradleModel
+import io.github.kotlua.ide.gradle.model.defaultMainCompilationOrNull
 import org.gradle.tooling.model.idea.IdeaModule
 import org.jetbrains.plugins.gradle.model.ProjectImportModelProvider
 import org.jetbrains.plugins.gradle.model.data.GradleSourceSetData
@@ -49,10 +51,10 @@ class KotluaProjectResolverExtension : AbstractProjectResolverExtension() {
         super.populateModuleCompileOutputSettings(gradleModule, ideModule)
         val model = resolverCtx.getExtraProject(gradleModule, KotluaGradleModel::class.java)
         if (model != null) {
-            val outDir = model.compilationsBySourceSetName["luaMain"]?.outputDir
+            val outDir = model.defaultMainCompilationOrNull?.outputDir
             if (outDir != null) {
                 val luaSourceSetNode = ExternalSystemApiUtil.findAll(ideModule, GradleSourceSetData.KEY)
-                    .firstOrNull { it.data.moduleName == "luaMain" }
+                    .firstOrNull { it.data.moduleName == DEFAULT_LUA_MAIN_SOURCE_SET_NAME }
 
                 if (luaSourceSetNode != null) {
                     luaSourceSetNode.data.useExternalCompilerOutput(true)

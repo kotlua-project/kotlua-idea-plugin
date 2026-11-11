@@ -22,10 +22,18 @@ import com.intellij.openapi.util.io.FileUtil
 import com.intellij.openapi.vfs.JarFileSystem
 import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.openapi.vfs.VfsUtilCore
+import io.github.kotlua.gradle.model.KotlinLanguageSettings
 import io.github.kotlua.gradle.model.KotluaGradleModel
+import io.github.kotlua.ide.gradle.model.DEFAULT_LUA_COMMON_SOURCE_SET_NAME
+import io.github.kotlua.ide.gradle.model.DEFAULT_LUA_MAIN_SOURCE_SET_NAME
+import io.github.kotlua.ide.gradle.model.defaultCommonCompilationOrNull
+import io.github.kotlua.ide.gradle.model.defaultCommonSourceSetOrNull
+import io.github.kotlua.ide.gradle.model.defaultMainCompilationOrNull
+import io.github.kotlua.ide.gradle.model.defaultMainSourceSetOrNull
 import io.github.kotlua.ide.platform.LuaIdePlatformKind
 import io.github.kotlua.ide.platform.LuaLibraryKind
 import io.github.kotlua.platform.LuaPlatforms
+import org.jetbrains.kotlin.cli.common.arguments.CommonCompilerArguments
 import org.jetbrains.kotlin.cli.common.arguments.parseCommandLineArguments
 import org.jetbrains.kotlin.config.KotlinModuleKind
 import org.jetbrains.kotlin.config.ResourceKotlinRootType
@@ -42,6 +50,8 @@ import org.jetbrains.plugins.gradle.model.data.GradleSourceSetData
 import org.jetbrains.plugins.gradle.util.GradleConstants
 import java.io.File
 
+// The Kotlin IDE plugin's data services remove KotlinFacet if the Kotlin Gradle plugin is not applied,
+// so we ensure that our KotlinFacet is configured afterward
 @Order(Integer.MAX_VALUE)
 class KotluaFacetDataService : AbstractProjectDataService<KotluaGradleModel, Void>() {
 
@@ -61,15 +71,15 @@ class KotluaFacetDataService : AbstractProjectDataService<KotluaGradleModel, Voi
             val sourceSetNodes = ExternalSystemApiUtil.findAll(parentNode, GradleSourceSetData.KEY)
                 .associateBy { it.data.moduleName }
 
-            val commonNode = sourceSetNodes["commonMain"]
-            val luaNode = sourceSetNodes["luaMain"]
+            val commonNode = sourceSetNodes[DEFAULT_LUA_COMMON_SOURCE_SET_NAME]
+            val luaNode = sourceSetNodes[DEFAULT_LUA_MAIN_SOURCE_SET_NAME]
 
             val commonIdeModule = commonNode?.let { modelsProvider.findIdeModule(it.data) }
             val luaIdeModule = luaNode?.let { modelsProvider.findIdeModule(it.data) }
 
             if (commonIdeModule != null) {
                 val rootModel = modelsProvider.getModifiableRootModel(commonIdeModule)
-                model.sourceSetsByName["commonMain"]?.let {
+                model.defaultCommonSourceSetOrNull?.let {
                     configureSourceFolders(rootModel, it.sourceDirs, it.resourceDirs)
                 }
                 configureSdk(rootModel)
@@ -81,7 +91,7 @@ class KotluaFacetDataService : AbstractProjectDataService<KotluaGradleModel, Voi
 
             if (luaIdeModule != null) {
                 val rootModel = modelsProvider.getModifiableRootModel(luaIdeModule)
-                model.sourceSetsByName["luaMain"]?.let {
+                model.defaultMainSourceSetOrNull?.let {
                     configureSourceFolders(rootModel, it.sourceDirs, it.resourceDirs)
                 }
                 configureSdk(rootModel)
@@ -107,9 +117,10 @@ class KotluaFacetDataService : AbstractProjectDataService<KotluaGradleModel, Voi
             useProjectSettings = false
             targetPlatform = CommonPlatforms.defaultCommonPlatform
             val args = LuaIdePlatformKind.createArguments()
-            model.compilationsBySourceSetName["luaMain"]?.let { compilation ->
+            model.defaultCommonCompilationOrNull?.let { compilation ->
                 parseCommandLineArguments(compilation.compilerArguments, args)
             }
+            model.defaultCommonSourceSetOrNull?.languageSettings?.applyTo(args)
             compilerArguments = args
 
             isHmppEnabled = true
@@ -134,9 +145,10 @@ class KotluaFacetDataService : AbstractProjectDataService<KotluaGradleModel, Voi
             targetPlatform = LuaPlatforms.defaultLuaPlatform
 
             val args = LuaIdePlatformKind.createArguments()
-            model.compilationsBySourceSetName["luaMain"]?.let { compilation ->
+            model.defaultMainCompilationOrNull?.let { compilation ->
                 parseCommandLineArguments(compilation.compilerArguments, args)
             }
+            model.defaultMainSourceSetOrNull?.languageSettings?.applyTo(args)
             compilerArguments = args
 
             isHmppEnabled = true
@@ -162,7 +174,7 @@ class KotluaFacetDataService : AbstractProjectDataService<KotluaGradleModel, Voi
         model: KotluaGradleModel,
         modelsProvider: IdeModifiableModelsProvider,
     ) {
-        val classpath = model.compilationsBySourceSetName["luaMain"]?.compileClasspath ?: return
+        val classpath = model.defaultMainCompilationOrNull?.compileClasspath ?: return
 
         for (klibFile in classpath) {
             val libName = "Kotlua: ${klibFile.nameWithoutExtension}"
@@ -221,6 +233,16 @@ class KotluaFacetDataService : AbstractProjectDataService<KotluaGradleModel, Voi
             }
         }
     }
+}
+
+private fun KotlinLanguageSettings.applyTo(args: CommonCompilerArguments) {
+    args.languageVersion = languageVersion
+    args.apiVersion = apiVersion
+    args.optIn = optInAnnotationsInUse.toTypedArray()
+    args.pluginOptions = compilerPluginArguments
+    args.pluginClasspaths = compilerPluginClasspath.map(File::getPath).toTypedArray()
+    args.freeArgs = freeCompilerArgs.toMutableList()
+    args.progressiveMode = isProgressiveMode
 }
 
 // KotlinSDK is not needed in our case, kotlin-stdlib-lua is used instead (at least for now)

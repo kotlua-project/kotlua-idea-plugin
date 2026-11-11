@@ -83,3 +83,30 @@ data class DefaultKotluaGradleModel(
         }
     )
 }
+
+const val DEFAULT_LUA_MAIN_SOURCE_SET_NAME = "luaMain"
+const val DEFAULT_LUA_COMMON_SOURCE_SET_NAME = "commonMain"
+
+val KotluaGradleModel.defaultMainSourceSet: KotluaSourceSet
+    get() = requireNotNull(defaultMainSourceSetOrNull)
+
+val KotluaGradleModel.defaultMainCompilation: KotluaCompilation
+    get() = requireNotNull(defaultMainCompilationOrNull)
+
+val KotluaGradleModel.defaultMainSourceSetOrNull: KotluaSourceSet?
+    get() = sourceSetsByName[DEFAULT_LUA_MAIN_SOURCE_SET_NAME]
+
+val KotluaGradleModel.defaultMainCompilationOrNull: KotluaCompilation?
+    get() = compilationsBySourceSetName[DEFAULT_LUA_MAIN_SOURCE_SET_NAME]
+
+val KotluaGradleModel.defaultCommonSourceSet: KotluaSourceSet
+    get() = requireNotNull(defaultCommonSourceSetOrNull)
+
+val KotluaGradleModel.defaultCommonCompilation: KotluaCompilation
+    get() = requireNotNull(defaultCommonCompilationOrNull)
+
+val KotluaGradleModel.defaultCommonSourceSetOrNull: KotluaSourceSet?
+    get() = sourceSetsByName[DEFAULT_LUA_COMMON_SOURCE_SET_NAME]
+
+val KotluaGradleModel.defaultCommonCompilationOrNull: KotluaCompilation?
+    get() = compilationsBySourceSetName[DEFAULT_LUA_COMMON_SOURCE_SET_NAME]
